@@ -17,10 +17,10 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # first request / cold start).
 RUN python3 -c "\
 import torch; \
-from diffusers import AutoPipelineForText2Image; \
+from diffusers import StableDiffusionXLPipeline; \
 from transformers import CLIPVisionModelWithProjection; \
-image_encoder = CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='sdxl_models/image_encoder', torch_dtype=torch.float16); \
-pipe = AutoPipelineForText2Image.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', image_encoder=image_encoder, torch_dtype=torch.float16, variant='fp16'); \
+image_encoder = CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder', torch_dtype=torch.float16); \
+pipe = StableDiffusionXLPipeline.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', image_encoder=image_encoder, torch_dtype=torch.float16, variant='fp16'); \
 pipe.load_ip_adapter('h94/IP-Adapter', subfolder='sdxl_models', weight_name='ip-adapter-plus_sdxl_vit-h.safetensors')"
 
 COPY handler.py .

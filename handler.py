@@ -4,7 +4,7 @@ import os
 
 import runpod
 import torch
-from diffusers import AutoPipelineForText2Image
+from diffusers import StableDiffusionXLPipeline
 from transformers import CLIPVisionModelWithProjection
 from PIL import Image
 
@@ -13,17 +13,18 @@ IP_ADAPTER_REPO = "h94/IP-Adapter"
 IP_ADAPTER_SUBFOLDER = "sdxl_models"
 IP_ADAPTER_WEIGHT = "ip-adapter-plus_sdxl_vit-h.safetensors"
 
-# The SDXL IP-Adapter checkpoints need the matching (ViT-bigG, 1664-dim) image
-# encoder that ships under sdxl_models/image_encoder in the same repo — NOT
-# the default one diffusers falls back to, which caused a shape mismatch
-# (514x1664 vs 1280x1280) when omitted.
-print("Loading IP-Adapter image encoder...")
+# The "_vit-h" checkpoint name is literal: it was trained against OpenCLIP
+# ViT-H-14 (1280-dim) embeddings — that encoder lives under models/image_encoder
+# in the h94/IP-Adapter repo, NOT sdxl_models/image_encoder (which is the
+# bigger ViT-bigG, 1664-dim, used by the *other* non-"vit-h" SDXL checkpoints).
+# Mixing these up is what caused the "514x1664 vs 1280x1280" shape error.
+print("Loading IP-Adapter image encoder (ViT-H)...")
 image_encoder = CLIPVisionModelWithProjection.from_pretrained(
-    IP_ADAPTER_REPO, subfolder="sdxl_models/image_encoder", torch_dtype=torch.float16
+    IP_ADAPTER_REPO, subfolder="models/image_encoder", torch_dtype=torch.float16
 )
 
 print("Loading SDXL base pipeline...")
-pipeline = AutoPipelineForText2Image.from_pretrained(
+pipeline = StableDiffusionXLPipeline.from_pretrained(
     BASE_MODEL, image_encoder=image_encoder, torch_dtype=torch.float16, variant="fp16"
 ).to("cuda")
 
