@@ -5,6 +5,7 @@ import os
 import runpod
 import torch
 from diffusers import AutoPipelineForText2Image
+from transformers import CLIPVisionModelWithProjection
 from PIL import Image
 
 BASE_MODEL = os.environ.get("BASE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
@@ -12,9 +13,18 @@ IP_ADAPTER_REPO = "h94/IP-Adapter"
 IP_ADAPTER_SUBFOLDER = "sdxl_models"
 IP_ADAPTER_WEIGHT = "ip-adapter-plus_sdxl_vit-h.safetensors"
 
+# The SDXL IP-Adapter checkpoints need the matching (ViT-bigG, 1664-dim) image
+# encoder that ships under sdxl_models/image_encoder in the same repo — NOT
+# the default one diffusers falls back to, which caused a shape mismatch
+# (514x1664 vs 1280x1280) when omitted.
+print("Loading IP-Adapter image encoder...")
+image_encoder = CLIPVisionModelWithProjection.from_pretrained(
+    IP_ADAPTER_REPO, subfolder="sdxl_models/image_encoder", torch_dtype=torch.float16
+)
+
 print("Loading SDXL base pipeline...")
 pipeline = AutoPipelineForText2Image.from_pretrained(
-    BASE_MODEL, torch_dtype=torch.float16, variant="fp16"
+    BASE_MODEL, image_encoder=image_encoder, torch_dtype=torch.float16, variant="fp16"
 ).to("cuda")
 
 print("Loading IP-Adapter weights...")
