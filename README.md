@@ -1,23 +1,28 @@
 # ClipperX Consistent Character Worker
 
-RunPod Serverless worker: SDXL + IP-Adapter, for generating stickman-style
-scene images that keep a reference character's face/hair/clothing consistent
-across many generations — the automation approach discussed for scaling the
-Galloping Gertie-style pipeline without the ~4min/image cost of the Flux2
-edit-mode worker.
+RunPod Serverless worker: **FLUX.2 [klein] 4B** (Apache 2.0, distilled for
+speed — as low as 4 inference steps), which has *native* multi-reference
+image editing support. This replaced an earlier SDXL + IP-Adapter attempt
+that proved unstable for our flat-vector stickman art style (IP-Adapter is a
+bolt-on adapter trained mostly on photos; this model was trained end-to-end
+to do reference-conditioned editing, so it should hold identity far more
+reliably).
 
 ## Input
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `prompt` | str | required | Scene description (style anchor + action) |
-| `reference_image_base64` | str | required | Character reference image, base64 (no `data:` prefix) |
-| `negative_prompt` | str | generic quality negatives | What to avoid |
-| `ip_adapter_scale` | float | `0.6` | How strongly the reference identity is enforced (0-1) |
-| `num_inference_steps` | int | `28` | Denoising steps |
-| `guidance_scale` | float | `6.0` | Prompt adherence |
-| `width` / `height` | int | `1024` / `1024` | Output resolution |
+| `prompt` | str | required | Scene description / edit instruction |
+| `reference_image_base64` | str | optional | Single reference image, base64 (no `data:` prefix) |
+| `reference_images_base64` | str[] | optional | Multiple reference images (multi-reference editing) |
+| `num_inference_steps` | int | `4` | Denoising steps (the model is distilled for very few) |
+| `guidance_scale` | float | `1.0` | Prompt adherence |
+| `width` / `height` | int | `1024` / `1024` | Output resolution (ignored in editing mode unless both are set) |
 | `seed` | int | random | For reproducibility |
+
+If no reference image is given, it runs as plain text-to-image. If one or
+more are given, it runs as image editing (the reference character/scene is
+redrawn per the prompt).
 
 ## Output
 
@@ -27,7 +32,5 @@ edit-mode worker.
 
 ## Notes
 
-- Model weights are baked into the Docker image at build time (no runtime
-  download), so cold starts only pay for container boot + model load into
-  VRAM, not a multi-GB HF Hub download.
-- Needs a real GPU with enough VRAM for SDXL fp16 (16GB+ recommended).
+- Model weights are baked into the Docker image at build time.
+- Needs a real GPU (13GB+ VRAM recommended per the model card).

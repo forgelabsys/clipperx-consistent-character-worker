@@ -12,16 +12,12 @@ RUN pip3 install --no-cache-dir torch==2.3.1 --index-url https://download.pytorc
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Pre-download the SDXL base weights + IP-Adapter weights at build time so
-# workers boot with everything already on disk (no multi-GB download on
-# first request / cold start).
+# Pre-download the FLUX.2-klein-4B weights at build time so workers boot
+# with everything already on disk (no multi-GB download on first request).
 RUN python3 -c "\
 import torch; \
-from diffusers import StableDiffusionPipeline; \
-from transformers import CLIPVisionModelWithProjection; \
-image_encoder = CLIPVisionModelWithProjection.from_pretrained('h94/IP-Adapter', subfolder='models/image_encoder', torch_dtype=torch.float16); \
-pipe = StableDiffusionPipeline.from_pretrained('stable-diffusion-v1-5/stable-diffusion-v1-5', image_encoder=image_encoder, torch_dtype=torch.float16); \
-pipe.load_ip_adapter('h94/IP-Adapter', subfolder='models', weight_name='ip-adapter-plus-face_sd15.bin')"
+from diffusers import DiffusionPipeline; \
+DiffusionPipeline.from_pretrained('black-forest-labs/FLUX.2-klein-4B', torch_dtype=torch.bfloat16)"
 
 COPY handler.py .
 
