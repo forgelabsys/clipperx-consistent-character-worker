@@ -69,20 +69,22 @@ def handler(event):
     if seed is not None:
         generator = torch.Generator(device="cuda").manual_seed(int(seed))
 
-    gen_kwargs = dict(
+    # Once an IP-Adapter is loaded onto the pipeline, diffusers' UNet forward
+    # pass structurally expects *some* ip_adapter_image on every call — it
+    # can't just be omitted. With no reference supplied, pass a blank neutral
+    # image and rely on scale=0.0 (set above) to make it a no-op.
+    ip_adapter_input = ref_image if ref_image is not None else Image.new("RGB", (224, 224), (255, 255, 255))
+
+    result = pipeline(
         prompt=prompt,
         negative_prompt=negative_prompt,
+        ip_adapter_image=ip_adapter_input,
         num_inference_steps=steps,
         guidance_scale=guidance_scale,
         width=width,
         height=height,
         generator=generator,
     )
-    # No reference image -> plain text-to-image, IP-Adapter fully bypassed.
-    if ref_image is not None:
-        gen_kwargs["ip_adapter_image"] = ref_image
-
-    result = pipeline(**gen_kwargs)
     image = result.images[0]
 
     return {"image": encode_image(image)}
