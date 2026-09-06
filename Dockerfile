@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.2-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
@@ -7,11 +7,13 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# diffusers (installed from GitHub main below, needed for the brand-new
-# FLUX.2-klein pipeline) requires torch.nn.attention.flex_attention, which
-# only exists from PyTorch 2.5 onward — the 2.3.1/cu121 pin used by the
-# earlier SDXL worker fails to import it.
-RUN pip3 install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+# RunPod's GPU pool includes Blackwell-generation cards (RTX 5090, RTX PRO
+# 6000 Blackwell) even when we request Ada-class types — its scheduler
+# apparently treats them as an equivalent tier. torch==2.6.0/cu124 has no
+# compiled kernels for Blackwell's sm_120 ("CUDA error: no kernel image is
+# available"), so we need a current torch build with cu128+ Blackwell
+# support instead of trying to dodge which physical GPU gets assigned.
+RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu128
 
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
