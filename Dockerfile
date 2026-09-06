@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
@@ -7,7 +7,11 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-RUN pip3 install --no-cache-dir torch==2.3.1 --index-url https://download.pytorch.org/whl/cu121
+# diffusers (installed from GitHub main below, needed for the brand-new
+# FLUX.2-klein pipeline) requires torch.nn.attention.flex_attention, which
+# only exists from PyTorch 2.5 onward — the 2.3.1/cu121 pin used by the
+# earlier SDXL worker fails to import it.
+RUN pip3 install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
