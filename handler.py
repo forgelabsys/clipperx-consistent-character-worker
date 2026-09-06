@@ -4,28 +4,27 @@ import os
 
 import runpod
 import torch
-from diffusers import StableDiffusionXLPipeline
+from diffusers import StableDiffusionPipeline
 from transformers import CLIPVisionModelWithProjection
 from PIL import Image
 
-BASE_MODEL = os.environ.get("BASE_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
+# SD 1.5 (not SDXL) + a face-specific IP-Adapter variant, which only exists
+# for 1.5 — trained to lock facial identity specifically, rather than the
+# general "plus" adapter's whole-image style/content, which is what SDXL was
+# fighting us on (face vs. pose vs. style all competing for the same scale knob).
+BASE_MODEL = os.environ.get("BASE_MODEL", "stable-diffusion-v1-5/stable-diffusion-v1-5")
 IP_ADAPTER_REPO = "h94/IP-Adapter"
-IP_ADAPTER_SUBFOLDER = "sdxl_models"
-IP_ADAPTER_WEIGHT = "ip-adapter-plus_sdxl_vit-h.safetensors"
+IP_ADAPTER_SUBFOLDER = "models"
+IP_ADAPTER_WEIGHT = "ip-adapter-plus-face_sd15.bin"
 
-# The "_vit-h" checkpoint name is literal: it was trained against OpenCLIP
-# ViT-H-14 (1280-dim) embeddings — that encoder lives under models/image_encoder
-# in the h94/IP-Adapter repo, NOT sdxl_models/image_encoder (which is the
-# bigger ViT-bigG, 1664-dim, used by the *other* non-"vit-h" SDXL checkpoints).
-# Mixing these up is what caused the "514x1664 vs 1280x1280" shape error.
 print("Loading IP-Adapter image encoder (ViT-H)...")
 image_encoder = CLIPVisionModelWithProjection.from_pretrained(
     IP_ADAPTER_REPO, subfolder="models/image_encoder", torch_dtype=torch.float16
 )
 
-print("Loading SDXL base pipeline...")
-pipeline = StableDiffusionXLPipeline.from_pretrained(
-    BASE_MODEL, image_encoder=image_encoder, torch_dtype=torch.float16, variant="fp16"
+print("Loading SD 1.5 base pipeline...")
+pipeline = StableDiffusionPipeline.from_pretrained(
+    BASE_MODEL, image_encoder=image_encoder, torch_dtype=torch.float16
 ).to("cuda")
 
 print("Loading IP-Adapter weights...")
