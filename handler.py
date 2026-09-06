@@ -54,7 +54,8 @@ def handler(event):
         "negative_prompt",
         "photo, photorealistic, 3d render, realistic shading, blurry, low quality, extra limbs, deformed",
     )
-    ref_image = decode_image(inp["reference_image_base64"])
+    ref_image_b64 = inp.get("reference_image_base64")
+    ref_image = decode_image(ref_image_b64) if ref_image_b64 else None
     ip_adapter_scale = inp.get("ip_adapter_scale", 0.6)
     steps = inp.get("num_inference_steps", 28)
     guidance_scale = inp.get("guidance_scale", 6.0)
@@ -62,22 +63,26 @@ def handler(event):
     height = inp.get("height", 1024)
     seed = inp.get("seed")
 
-    pipeline.set_ip_adapter_scale(ip_adapter_scale)
+    pipeline.set_ip_adapter_scale(ip_adapter_scale if ref_image else 0.0)
 
     generator = None
     if seed is not None:
         generator = torch.Generator(device="cuda").manual_seed(int(seed))
 
-    result = pipeline(
+    gen_kwargs = dict(
         prompt=prompt,
         negative_prompt=negative_prompt,
-        ip_adapter_image=ref_image,
         num_inference_steps=steps,
         guidance_scale=guidance_scale,
         width=width,
         height=height,
         generator=generator,
     )
+    # No reference image -> plain text-to-image, IP-Adapter fully bypassed.
+    if ref_image is not None:
+        gen_kwargs["ip_adapter_image"] = ref_image
+
+    result = pipeline(**gen_kwargs)
     image = result.images[0]
 
     return {"image": encode_image(image)}
