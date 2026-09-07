@@ -19,16 +19,31 @@ reliably).
 | `guidance_scale` | float | `1.0` | Prompt adherence |
 | `width` / `height` | int | `1024` / `1024` | Output resolution (ignored in editing mode unless both are set) |
 | `seed` | int | random | For reproducibility |
+| `num_images_per_prompt` | int | `1` | How many images to generate in this one call |
+| `max_sequence_length` | int | `512` | Max token length for the prompt encoder |
 
 If no reference image is given, it runs as plain text-to-image. If one or
 more are given, it runs as image editing (the reference character/scene is
 redrawn per the prompt).
 
+This is the full real parameter list of `Flux2KleinPipeline.__call__`
+(checked against the diffusers source) that make sense as user-facing
+controls. Parameters that exist in the signature but aren't exposed here on
+purpose: `negative_prompt_embeds` (the pipeline hardcodes `""` as the
+negative prompt internally — there's no plain-string `negative_prompt`
+input to wire up), `sigmas`/`latents`/`prompt_embeds`/`attention_kwargs`/
+`callback_on_step_end*` (advanced/internal, no plain value to accept from a
+JSON job input).
+
 ## Output
 
 ```json
-{ "image": "<base64 PNG>" }
+{ "image": "<base64 PNG, the first one>", "images": ["<base64 PNG>", ...] }
 ```
+
+`image` stays as a single value for backward compatibility with callers
+that only ever used one image; `images` is the full list, length
+`num_images_per_prompt`.
 
 ## Notes
 

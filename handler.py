@@ -39,6 +39,12 @@ def handler(event):
     width = inp.get("width", 1024)
     height = inp.get("height", 1024)
     seed = inp.get("seed")
+    # Os únicos outros parâmetros reais do __call__ do Flux2KleinPipeline
+    # (conferido no código-fonte do diffusers — não tem "negative_prompt" de
+    # verdade, só "negative_prompt_embeds" interno, fixo em "": não dá pra
+    # expor isso como campo de texto simples).
+    num_images_per_prompt = inp.get("num_images_per_prompt", 1)
+    max_sequence_length = inp.get("max_sequence_length", 512)
 
     generator = None
     if seed is not None:
@@ -57,6 +63,8 @@ def handler(event):
         num_inference_steps=steps,
         guidance_scale=guidance_scale,
         generator=generator,
+        num_images_per_prompt=num_images_per_prompt,
+        max_sequence_length=max_sequence_length,
     )
 
     if ref_images is not None:
@@ -71,9 +79,12 @@ def handler(event):
         gen_kwargs["height"] = height
 
     result = pipeline(**gen_kwargs)
-    image = result.images[0]
+    images_b64 = [encode_image(img) for img in result.images]
 
-    return {"image": encode_image(image)}
+    # "image" (singular, a primeira) mantém compatibilidade com quem já
+    # consome uma imagem só; "images" (lista) é novo, pra quando
+    # num_images_per_prompt > 1.
+    return {"image": images_b64[0], "images": images_b64}
 
 
 if __name__ == "__main__":
